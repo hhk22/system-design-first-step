@@ -308,10 +308,24 @@ def test_get_post():
     elapsed = time.time() - start
     return elapsed * 1000  # ms
 
-# 50개의 동시 요청
-with ThreadPoolExecutor(max_workers=100) as executor:
-    results = list(executor.map(lambda _: test_get_post(), range(100)))
+# 전체 테스트 시작 시간
+test_start = time.time()
 
+# 50개의 동시 요청
+with ThreadPoolExecutor(max_workers=50) as executor:
+    results = list(executor.map(lambda _: test_get_post(), range(50)))
+
+# 전체 테스트 종료 시간
+test_end = time.time()
+total_time = test_end - test_start
+
+# req/s 계산
+num_requests = len(results)
+req_per_sec = num_requests / total_time
+
+print(f"총 요청 수: {num_requests}")
+print(f"총 소요 시간: {total_time:.2f}초")
+print(f"처리량 (req/s): {req_per_sec:.2f} req/s")
 print(f"평균 응답 시간: {sum(results) / len(results):.2f}ms")
 print(f"최대 응답 시간: {max(results):.2f}ms")
 print(f"최소 응답 시간: {min(results):.2f}ms")
@@ -336,9 +350,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 # 다른쪽 Terminal에서 실행
 python traffic_test.py
 >>>
-평균 응답 시간: 28052.22ms
-최대 응답 시간: 32927.96ms
-최소 응답 시간: 2257.26ms
+총 요청 수: 50
+총 소요 시간: 2.53초
+처리량 (req/s): 19.79 req/s
+평균 응답 시간: 2346.56ms
+최대 응답 시간: 2478.18ms
+최소 응답 시간: 2211.89ms
 # 중간중간 QueuePool size 부족으로 인한, timeout issue도 생김. 
 # [ERROR] 게시글 조회 실패: TimeoutError: QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30.00 (Background on this error at: https://sqlalche.me/e/20/3o7r)
 # --> 해당 이슈를 해결하기 위해, python 코드에서의 database.py를 수정함으로써 해결할 수 있다. 
