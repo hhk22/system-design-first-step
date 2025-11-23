@@ -1,0 +1,8 @@
+FROM redis:7-alpine
+
+# Redis 설정 파일 복사 (선택사항)
+# COPY redis.conf /usr/local/etc/redis/redis.conf
+
+EXPOSE 6379
+
+CMD ["redis-server"]
