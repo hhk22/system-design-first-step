@@ -51,13 +51,27 @@ Phase 1에서 발견한 문제점들을 해결하기 위해 **Redis 캐싱**을 
 - 인기 게시글 랭킹 실시간 관리
 - 조회수 기반 실시간 정렬
 
-## Redis 설정
+## 서비스 실행
 
-### Docker로 Redis 실행
+### Myslq Service
 
 ```bash
-docker build -t redis-blog-service -f Dockerfile.redis .
+docker build -t mysql-blog-service -f Dockerfile.mysql .
+docker run --rm -d -p 3306:3306 --name mysql-blog-service mysql-blog-service
+```
+
+### Redis 실행
+
+```bash
+docker buid -t redis-blog-service -f Dockerfile.redis .
 docker run --rm -d -p 6379:6379 --name redis-blog-service redis-blog-service
+```
+
+### Application 실행
+
+```bash
+cd blog-service
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## 구현 내용
@@ -153,8 +167,8 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
         if cached_post:
             # 캐시 히트: Redis에서 직접 반환
             post_data = json.loads(cached_post)
-            # 조회수는 Redis에서 가져오기
-            view_count = cache.get(f"post:view_count:{post_id}")
+            view_count = cache.increment(f"post:view_count:{post_id}")
+            cache.zadd("post:ranking", view_count, str(post_id))
             if view_count:
                 post_data['view_count'] = int(view_count)
             return PostResponse(**post_data)
@@ -297,25 +311,25 @@ def get_popular_posts(limit: int = 10, db: Session = Depends(get_db)):
 
 ```bash
 # 비교 모드로 실행
-python traffic_test.py compare
+python traffic_test.py
 ```
 
 **테스트 조건 (동일하게 적용)**:
 - 요청 수: 500개
-- 동시 작업자: 100명
+- 동시 작업자: 50명
 - 테스트 게시글: 동일한 게시글 ID 반복 조회
 - 테스트 시나리오: 게시글 조회 API (`GET /posts/{post_id}`)
 
 **실행 순서**:
-1. Phase 1 코드로 서버 실행 → `python traffic_test.py compare` 실행 → Phase 1 결과 확인
-2. Phase 2 코드로 서버 실행 → `python traffic_test.py compare` 실행 → Phase 2 결과 확인
+1. Phase 1 코드로 서버 실행 → `python traffic_test.py` 실행 → Phase 1 결과 확인
+2. Phase 2 코드로 서버 실행 → `python traffic_test.py` 실행 → Phase 2 결과 확인
 3. 두 결과를 비교하여 개선율 계산
 
 #### Phase 2 단독 테스트
 
 ```bash
 # Phase 2만 테스트
-python traffic_test.py phase2
+python traffic_test.py
 ```
 
 **테스트 내용**:
@@ -335,7 +349,7 @@ python traffic_test.py phase2
 | **인기 게시글 랭킹** | DB 쿼리 필요 | Redis에서 즉시 조회 | **90% 개선** |
 | **처리량** | ~100 req/s | ~500 req/s | **5배 증가** |
 
-**참고**: 위 수치는 동일한 테스트 조건(500개 요청, 100명 동시 작업자)으로 측정한 결과입니다.
+**참고**: 위 수치는 동일한 테스트 조건(500개 요청, 50명 동시 작업자)으로 측정한 결과입니다.
 
 ## 캐싱 전략 상세
 

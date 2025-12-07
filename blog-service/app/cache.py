@@ -57,7 +57,7 @@ class RedisCache:
     def zrevrange(self, key: str, start: int = 0, end: int = -1, with_scores: bool = False):
         """Sorted Set에서 역순으로 가져오기 (랭킹 조회)"""
         try:
-            return self.redis_client.zrevrange(key, start, end, with_scores=with_scores)
+            return self.redis_client.zrevrange(key, start, end, withscores=with_scores)
         except Exception as e:
             print(f"[Redis Error] ZRevRange failed: {e}")
             return []
