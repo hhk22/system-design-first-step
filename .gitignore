@@ -26,3 +26,5 @@ Thumbs.db
 # Logs
 *.log
 
+# mysql-log
+.master_bin*
