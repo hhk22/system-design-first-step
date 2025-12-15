@@ -3,13 +3,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.routers import posts
-from app.database import engine
+from app.database import engine, read_engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: 서버 시작 시 실행
     try:
         with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        with read_engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         print("✅ 데이터베이스 연결 성공")
     except Exception as e:

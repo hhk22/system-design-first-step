@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Text, TIMESTAMP, Index
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql import func
 
@@ -12,6 +12,10 @@ class Base(DeclarativeBase):
 # SQLAlchemy 모델 (데이터베이스 테이블과 매핑)
 class Post(Base):
     __tablename__ = "posts"
+    __table_args__ = (
+        Index("idx_posts_created_at", "created_at"),
+        Index("idx_posts_view_count", "view_count"),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)

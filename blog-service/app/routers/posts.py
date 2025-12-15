@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 from sqlalchemy.orm import Session
 from app.models import PostCreate, PostUpdate, PostResponse, Post
-from app.database import get_db
+from app.database import get_db, get_read_db
 from app.cache import cache
 
 import json
@@ -36,7 +36,7 @@ def create_post(post: PostCreate, db: Session = Depends(get_db)):
         )
 
 @router.get("", response_model=List[PostResponse])
-def get_posts(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+def get_posts(skip: int = 0, limit: int = 10, db: Session = Depends(get_read_db)):
     """게시글 목록 조회"""
     try:
         posts = db.query(Post).order_by(Post.created_at.desc()).offset(skip).limit(limit).all()
@@ -49,7 +49,7 @@ def get_posts(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
         )
 
 @router.get("/{post_id}", response_model=PostResponse)
-def get_post(post_id: int, db: Session = Depends(get_db)):
+def get_post(post_id: int, db: Session = Depends(get_read_db)):
     """게시글 조회 (단일)"""
     try:
         # 1. First check cache data on Redis
@@ -147,6 +147,9 @@ def delete_post(post_id: int, db: Session = Depends(get_db)):
         # 게시글 삭제
         db.delete(post)
         db.commit()
+        cache.delete(f"post:{post_id}")
+        cache.delete(f"post:view_count:{post_id}")
+        cache.zrem("post:ranking", str(post_id))
         
         return None
         
@@ -160,29 +163,30 @@ def delete_post(post_id: int, db: Session = Depends(get_db)):
         )
 
 @router.get("/ranking/popular", response_model=List[PostResponse])
-def get_popular_posts(limit: int = 10, db: Session = Depends(get_db)):
+def get_popular_posts(limit: int = 10, db: Session = Depends(get_read_db)):
     """인기 게시글 랭킹 조회 (조회수 기준)"""
     try:
         # Redis Sorted Set에서 상위 N개 가져오기
-        ranking = cache.zrevrange("post:ranking", 0, limit - 1, with_scores=False)
-        print(ranking)
+        ranking = cache.zrevrange("post:ranking", 0, limit - 1, with_scores=True)
         
         if not ranking:
             # 랭킹이 없으면 DB에서 조회수 기준으로 가져오기
-            posts = db.query(Post)\
-                .order_by(Post.view_count.desc())\
-                .limit(limit)\
+            posts = (
+                db.query(Post)
+                .order_by(Post.view_count.desc())
+                .limit(limit)
                 .all()
+            )
             return [PostResponse.model_validate(post) for post in posts]
         
-        # Redis에서 가져온 ID로 게시글 조회
-        post_ids = [int(post_id) for post_id in ranking]
+        # Redis에서 가져온 ID와 점수 기반으로 정렬 및 조회수 설정
+        post_ids = [int(member) for member, _ in ranking]
+        score_map = {int(member): int(score) for member, score in ranking}
         posts = db.query(Post).filter(Post.id.in_(post_ids)).all()
         
-        # ID 순서대로 정렬
         post_dict = {}
         for post in posts:
-            post.view_count = cache.get(f"post:view_count:{post.id}")
+            post.view_count = score_map.get(post.id, post.view_count)
             post_dict[post.id] = post
         sorted_posts = [post_dict[post_id] for post_id in post_ids if post_id in post_dict]
         

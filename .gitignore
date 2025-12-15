@@ -26,3 +26,6 @@ Thumbs.db
 # Logs
 *.log
 
+# DB
+.master_binlog
+.master_binpos
