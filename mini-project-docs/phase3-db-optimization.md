@@ -71,25 +71,29 @@ DB_READ_PASSWORD=readonly
 DB_READ_NAME=blog_db
 ```
 
-## 테스트
+## 시스템 구동
 
-### 자동화 테스트
+```bash
+make run-master-db
+make run-replica-db
+make test
+
+curl -X GET http://localhost/posts
+>> 총 3개의 documnet 검색 (replica db를 사용)
+
+curl -X POST http://localhost:8000/posts/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "test-title-1",
+    "content": "test-content",
+    "author": "test-author"
+}'
+>> 새로운 1개의 document 삽입 (master db를 사용)
+
+curl -X GET http://localhost/posts
+>> 총 4개의 document가 검색되면 정상동작
 
 ```
-cd blog-service
-pytest
-```
-
-테스트는 SQLite + FakeRedis 환경에서 아래 사항을 검증합니다.
-
-- `GET /posts/{id}`가 리플리카 세션을 통해 데이터를 읽는지  
-- `GET /posts/ranking/popular` 응답이 Redis 점수(조회수)에 따라 정렬되는지
-
-### 수동 체크리스트
-
-- `.env`에 Replica 접속 정보가 없을 때도 서비스가 정상 기동되는가?  
-- Replica 장애 시 캐시 경로로 조회가 가능한가?  
-- Master/Replica 간 데이터 동기화 주기(예: MySQL binlog) 확인
 
 ## 성능 기대 효과
 
@@ -99,10 +103,7 @@ pytest
 | **DB 부하** | 단일 Master 집중 | 읽기 트래픽 Replica 분산 | Master CPU 사용률 감소 |
 | **랭킹 응답** | Redis + DB 조회 | Redis 점수 즉시 사용 | 응답 속도 최소화 |
 
-## 다음 단계
 
-- Replica 지연(Replication Lag) 모니터링 추가
-- 읽기 장애 시 Failover 전략 설계
-- Phase 4: 로드 밸런싱 및 다중 애플리케이션 서버 확장
+이렇게 되면 쓰기작업과 읽기작업이 서로 다른 DB를 사용하게되면서 단순히 하나의 DB에서 읽기/쓰기를 모두 담당하는 구조에서보다 DB의 과부화가 해소되고 속도도 향상됨. 
 
 

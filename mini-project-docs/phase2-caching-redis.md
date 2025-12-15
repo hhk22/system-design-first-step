@@ -1,5 +1,7 @@
 # 시스템 디자인 실습: Phase 2 - Redis 캐싱 도입
 
+해당 시스템 설계에 대한 코드는 [깃헙코드](https://github.com/hhk22/system-design-first-step/tree/feature/phase2) 에 설명되어 있습니다. 
+
 ## 개요
 
 Phase 1에서 발견한 문제점들을 해결하기 위해 **Redis 캐싱**을 도입하여 성능을 크게 개선합니다.
@@ -303,7 +305,7 @@ def get_popular_posts(limit: int = 10, db: Session = Depends(get_db)):
 
 ## 성능 측정 방법
 
-### Phase 1 vs Phase 2 비교 테스트
+### Phase2 성능 테스트
 
 **중요**: 정확한 성능 비교를 위해 **동일한 테스트 조건**으로 실행해야 합니다.
 
@@ -387,12 +389,11 @@ Redis에만 기록 (1ms)
 - Redis 메모리 제한 설정
 - TTL을 적절히 설정하여 오래된 데이터 자동 삭제
 
-## 다음 단계: Phase 3
+## 다음 단계: Phase3 Mysql 읽기/쓰기 분리
 
 Phase 2 완료 후 Phase 3에서는:
-- RabbitMQ를 이용한 비동기 작업 처리
-- 조회수 DB 동기화를 메시지 큐로 처리
-- 이메일 발송, 알림 등 비동기 작업
+- Mysql 서버를 Master/Replica 구조를 구축하고, master쪽에서는 쓰기를 담당하고, replica쪽에서 데이터를 읽어오는 구조를 생성
+- 이로써, 한쪽의 DB에 과부화하는 현상 해결
 
 ---
 
@@ -405,6 +406,4 @@ Phase 2에서는 Redis 캐싱을 도입하여 성능을 크게 개선했습니�
 ✅ Redis Sorted Set을 이용한 실시간 랭킹  
 ✅ 캐시 무효화 전략 적용  
 ✅ 처리량 5배 증가 (100 → 500 req/s)
-
-다음 단계인 **Phase 3: 메시지 큐 도입**에서는 RabbitMQ를 활용하여 비동기 작업 처리를 학습하게 됩니다.
 
