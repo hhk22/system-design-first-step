@@ -113,18 +113,23 @@
 ```
 
 **구현 내용:**
-- Nginx 로드 밸런서 (Round-Robin)
-- 애플리케이션 서버 3대 (Stateless)
-- Redis 클러스터
-- 세션 공유 (Redis 기반)
+- Nginx 로드 밸런서 (`least_conn`, 헬스 체크, Keepalive)
+- FastAPI 애플리케이션 3대 이상 가동, `/health` 엔드포인트 제공
+- Redis Cluster/Sentinel로 세션 및 캐시 공유 (Stateless 보장)
+- `deploy/docker-compose.phase4.yml` 기반 다중 인스턴스 실행 (혹은 Kubernetes/ECS)
+- 무중단 배포 전략 (Rolling Update, 장애 인스턴스 자동 제외)
+- Observability: Prometheus + Grafana 메트릭, 로그 수집, OpenTelemetry 트레이싱
 
 **성능 목표:**
 - 처리량: 10,000 req/s
 - 응답 시간: < 200ms (평균)
 
 **테스트:**
-- nGrinder 부하 테스트
-- 서버별 CPU/메모리 모니터링
+- `wrk` 또는 nGrinder로 부하 테스트 (동시 사용자 2,000명 이상)
+- 장애 주입 테스트 (인스턴스 다운 시 트래픽 재분배 확인)
+- 세션 일관성 검증, 서버별 CPU/메모리 모니터링
+
+**실습 가이드**: [mini-project/phase4-load-balancing.md](../mini-project/phase4-load-balancing.md)
 
 ---
 
@@ -234,9 +239,11 @@
 - [ ] 쿼리 최적화
 
 ### Phase 4 ✅
-- [ ] Nginx 로드 밸런서 설정
-- [ ] 여러 서버 인스턴스 실행
-- [ ] 부하 테스트
+- [ ] Nginx 로드 밸런서 설정 (`least_conn` + 헬스 체크)
+- [ ] FastAPI 인스턴스 3대 이상 실행 및 `/health` 확인
+- [ ] Redis Cluster로 세션/캐시 공유
+- [ ] 무중단 배포 전략 검증 (scale up/down)
+- [ ] 부하/장애 테스트 (wrk, nGrinder)
 
 ### Phase 5 ✅
 - [ ] RabbitMQ/Redis Queue 설정
